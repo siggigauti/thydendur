@@ -59,9 +59,9 @@ _FLOAT={_DIGIT}+\.{_DIGIT}+([eE][+-]?{_DIGIT}+)?
 _INT={_DIGIT}+
 _STRING=\"([^\"\\]|\\b|\\t|\\n|\\f|\\r|\\\"|\\\'|\\\\|(\\[0-3][0-7][0-7])|\\[0-7][0-7]|\\[0-7])*\"
 _CHAR=\'([^\'\\]|\\b|\\t|\\n|\\f|\\r|\\\"|\\\'|\\\\|(\\[0-3][0-7][0-7])|(\\[0-7][0-7])|(\\[0-7]))\'
-_DELIM=[()]
-_OPNAME??
-_NAME=([:letter:]|[\+\-*/!%&=><\:\^\~&|?]|{_DIGIT})+
+_DELIM=[(){};=,-]
+_OPNAME=[\+\-*/!%&=><\:\^\~&|?]+
+_NAME=([:letter:]|{_DIGIT})+
 
 %%
 
@@ -83,27 +83,27 @@ _NAME=([:letter:]|[\+\-*/!%&=><\:\^\~&|?]|{_DIGIT})+
 }
 
 "while" {
-	lexme = yytext();
+	lexeme = yytext();
 	return WHILE;
 }
 
 "else" {
-	lexme = yytext();
+	lexeme = yytext();
 	return ELSE;
 }
 
 "elseif" {
-	lexme = yytext();
+	lexeme = yytext();
 	return ELSEIF;
 }
 
 "return" {
-	lexme = yytext();
+	lexeme = yytext();
 	return RETURN;
 }
 
 {_OPNAME} {
-	lexme = yytext();
+	lexeme = yytext();
 	return OPNAME;
 }
 

@@ -1,0 +1,261 @@
+/*
+ * Byacc/J þáttari fyrir NanoLisp.
+ * Höfundur: Snorri Agnarsson, 2014-2016.
+ *
+ * Þáttara þennan má þýða með skipununum
+ *    byacc -J -Jclass=NanoLispParser nanolisp.byaccj
+ *    javac NanoLispParser.java NanoLispParserVal.java
+ */
+
+%{
+	import java.io.*;
+	import java.util.*;
+%}
+
+%token <sval> LITERAL,NAME
+%token IF,DEFINE
+%type <obj> program, fundecl, expr, args
+%type <ival> ids
+
+%%
+
+start										/*@ \label{grammarstart} @*/
+	:	program	{ generateProgram(name,((Vector<Object>)($1)).toArray()); }
+	;
+
+program
+	:	program fundecl		{ ((Vector<Object>)($1)).add($2); $$=$1; }
+	|	fundecl				{ $$=new Vector<Object>(); ((Vector<Object>)($$)).add($1); }
+	;
+
+fundecl
+	:		{
+				varCount = 0;
+				varTable = new HashMap<String,Integer>();
+			}
+		'(' DEFINE '(' NAME ids ')' expr ')'
+			{
+				$$=new Object[]{$5,$6,$8};
+			}
+	;
+
+ids
+	:	/* empty */				{ $$=0; }
+	|	ids NAME				{ addVar($2); $$=$1+1; }
+	;
+
+expr
+	:	NAME						{ $$=new Object[]{Code.NAME,findVar($1)}; }
+	|	LITERAL						{ $$=new Object[]{Code.LITERAL,$1}; }
+	|	'(' IF expr expr expr ')'	{ $$=new Object[]{Code.IF,$3,$4,$5}; }
+	|	'(' NAME args ')'			{ $$=new Object[]{Code.CALL,$2,((Vector<Object>)($3)).toArray()}; }
+	;
+
+args
+	:	/* empty */			{ $$=new Vector<Object>(); }
+	|	args expr			{ ((Vector<Object>)($1)).add($2); $$=$1; }
+	;										/*@ \label{grammarend} @*/
+
+%%
+
+	enum Code
+	{
+		IF, LITERAL, NAME, CALL
+	};
+
+	static private String name;
+	private NanoLispLexer lexer;
+	private int varCount;
+	private HashMap<String,Integer> varTable;
+
+	private void addVar( String name )
+	{
+		if( varTable.get(name) != null )
+			yyerror("Variable "+name+" already exists");
+		varTable.put(name,varCount++);
+	}
+
+	private int findVar( String name )
+	{
+		Integer res = varTable.get(name);
+		if( res == null )
+			yyerror("Variable "+name+" does not exist");
+		return res;
+	}
+
+	int last_token_read;
+
+	private int yylex()
+	{
+		int yyl_return = -1;
+		try
+		{
+			yylval = null;
+			last_token_read = yyl_return = lexer.yylex();
+			if( yylval==null )
+				yylval = new NanoLispParserVal(NanoLispParser.yyname[yyl_return]);
+		}
+		catch (IOException e)
+		{
+			System.err.println("IO error: "+e);
+		}
+		return yyl_return;
+	}
+
+	public void yyerror( String error )
+	{
+		System.out.println("Error:  "+error);
+		System.out.println("Token:  "+NanoLispParser.yyname[last_token_read]);
+		System.exit(1);
+	}
+
+	public NanoLispParser( Reader r )
+	{
+		lexer = new NanoLispLexer(r,this);
+	}
+
+	public static void main( String args[] )
+	  	throws IOException
+	{
+		NanoLispParser yyparser = new NanoLispParser(new FileReader(args[0]));
+		name = args[0].substring(0,args[0].lastIndexOf('.'));
+		yyparser.yyparse();
+	}
+
+	public static void emit( String s )		/*@ \label{byaccgeneratorstart} @*/
+	{
+		System.out.println(s);
+	}
+
+	static void generateProgram( String name, Object[] p )
+	{
+		emit("\""+name+".mexe\" = main in");
+		emit("!{{");
+		for( int i=0 ; i!=p.length ; i++ ) generateFunction((Object[])p[i]);
+		emit("}}*BASIS;");
+	}
+
+	static void generateFunction( Object[] f )
+	{
+		String fname = (String)f[0];
+		int count = (Integer)f[1];
+		emit("#\""+fname+"[f"+count+"]\" =");
+		emit("[");
+		generateExprR((Object[])f[2]);
+		emit("];");
+	}
+
+	static int nextLab = 0;
+
+	static int newLab()
+	{
+		return nextLab++;
+	}
+
+	static void generateExpr( Object[] e )
+	{
+		switch( (Code)e[0] )
+		{
+		case NAME:
+			// e = {NAME,name}
+			emit("(Fetch "+e[1]+")");
+			return;
+		case LITERAL:
+			// e = {LITERAL,literal}
+			emit("(MakeVal "+(String)e[1]+")");
+			return;
+		case IF:
+			// e = {IF,cond,then,else}
+			generateExpr((Object[])e[1]);
+			int labElse = newLab();
+			int labEnd = newLab();
+			emit("(GoFalse _"+labElse+")");
+			generateExpr((Object[])e[2]);
+			emit("(Go _"+labEnd+")");
+			emit("_"+labElse+":");
+			generateExpr((Object[])e[3]);
+			emit("_"+labEnd+":");
+			return;
+		case CALL:
+			// e = {CALL,name,args}
+			Object[] args = (Object[])e[2];
+			int i;
+			for( i=0 ; i!=args.length ; i++ )
+				if( i==0 )
+					generateExpr((Object[])args[i]);
+				else
+					generateExprP((Object[])args[i]);
+			emit("(Call #\""+e[1]+"[f"+i+"]\" "+i+")");
+			return;
+		}
+	}
+
+	static void generateExprR( Object[] e )
+	{
+		switch( (Code)e[0] )
+		{
+		case NAME:
+			// e = {NAME,name}
+			emit("(FetchR "+e[1]+")");
+			return;
+		case LITERAL:
+			// e = {LITERAL,literal}
+			emit("(MakeValR "+(String)e[1]+")");
+			return;
+		case IF:
+			// e = {IF,cond,then,else}
+			generateExpr((Object[])e[1]);
+			int labElse = newLab();
+			emit("(GoFalse _"+labElse+")");
+			generateExprR((Object[])e[2]);
+			emit("_"+labElse+":");
+			generateExprR((Object[])e[3]);
+			return;
+		case CALL:
+			// e = {CALL,name,args}
+			Object[] args = (Object[])e[2];
+			int i;
+			for( i=0 ; i!=args.length ; i++ )
+				if( i==0 )
+					generateExpr((Object[])args[i]);
+				else
+					generateExprP((Object[])args[i]);
+			emit("(CallR #\""+e[1]+"[f"+i+"]\" "+i+")");
+			return;
+		}
+	}
+
+	static void generateExprP( Object[] e )
+	{
+		switch( (Code)e[0] )
+		{
+		case NAME:
+			// e = {NAME,name}
+			emit("(FetchP "+e[1]+")");
+			return;
+		case LITERAL:
+			// e = {LITERAL,literal}
+			emit("(MakeValP "+(String)e[1]+")");
+			return;
+		case IF:
+			// e = {IF,cond,then,else}
+			generateExprP((Object[])e[1]);
+			int labElse = newLab();
+			int labEnd = newLab();
+			emit("(GoFalse _"+labElse+")");
+			generateExpr((Object[])e[2]);
+			emit("(Go _"+labEnd+")");
+			emit("_"+labElse+":");
+			generateExpr((Object[])e[3]);
+			emit("_"+labEnd+":");
+			return;
+		case CALL:
+			// e = {CALL,name,args}
+			Object[] args = (Object[])e[2];
+			int i;
+			for( i=0 ; i!=args.length ; i++ ) generateExprP((Object[])args[i]);
+			if( i==0 ) emit("(Push)");
+			emit("(Call #\""+e[1]+"[f"+i+"]\" "+i+")");
+			return;
+		}
+	}			/*@ \label{byaccgeneratorend} @*/

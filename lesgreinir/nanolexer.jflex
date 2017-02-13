@@ -25,6 +25,7 @@ import java.io.*;
 // Skilgreiningar á tókum (tokens):
 final static int ERROR = -1;
 final static int IF = 1001;
+final static int VAR = 1002;
 final static int NAME = 1003;
 final static int LITERAL = 1004;
 final static int OPNAME = 1005;
@@ -59,7 +60,7 @@ _FLOAT={_DIGIT}+\.{_DIGIT}+([eE][+-]?{_DIGIT}+)?
 _INT={_DIGIT}+
 _STRING=\"([^\"\\]|\\b|\\t|\\n|\\f|\\r|\\\"|\\\'|\\\\|(\\[0-3][0-7][0-7])|\\[0-7][0-7]|\\[0-7])*\"
 _CHAR=\'([^\'\\]|\\b|\\t|\\n|\\f|\\r|\\\"|\\\'|\\\\|(\\[0-3][0-7][0-7])|(\\[0-7][0-7])|(\\[0-7]))\'
-_DELIM=[(){};=,-]
+_DELIM=[(){};=,]
 _OPNAME=[\+\-*/!%&=><\:\^\~&|?]+
 _NAME=([:letter:]|{_DIGIT})+
 
@@ -102,6 +103,11 @@ _NAME=([:letter:]|{_DIGIT})+
 	return RETURN;
 }
 
+"var" {
+	lexeme = yytext();
+	return VAR;
+}
+
 {_OPNAME} {
 	lexeme = yytext();
 	return OPNAME;
@@ -112,7 +118,7 @@ _NAME=([:letter:]|{_DIGIT})+
 	return NAME;
 }
 
-";".*$ {
+";;;".*$ {
 }
 
 [ \t\r\n\f] {

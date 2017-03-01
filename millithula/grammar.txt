@@ -1,0 +1,66 @@
+Mállýsingar fyrir örlítið forritunarmál.
+========================================
+
+Höfundur: Snorri Agnarsson, janúar 2017
+
+Sjá einnig skilgreiningu NanoMorpho í bæklingnum um markmið þýðandaverkefnis.
+
+EBNF skilgreining á örlitlu forritunarmáli, margræð (hvers vegna?)
+==================================================================
+
+program		=	{ function }
+			;
+
+function	= 	NAME, '(', [ NAME, { ',', NAME } ], ')'
+				'{', { decl, ';' }, { expr, ';' }, '}'
+			;
+
+decl		=	'var', NAME, { ',', NAME }
+			;
+
+expr		=	NAME, '=', expr 
+			|	NAME
+			|	NAME, '(', [ expr, { ',', expr } ], ')'
+			| 	'return', expr 
+			|	OPNAME, expr
+			|	expr, OPNAME, expr
+			| 	LITERAL 
+			|	'(', expr, ')'
+			|	'if', expr, body, { 'elsif', expr, body }, [ 'else', body ]
+			|	'while', expr, body
+			;
+
+body		=	'{', { expr, ';' }, '}' ;
+
+Breytt og ómargrætt, en þó ekki alveg nóg fyrir LL(1) - en hvað með LL(2)?
+==========================================================================
+
+program		=	{ function }
+			;
+
+function	= 	NAME, '(', [ NAME, { ',', NAME } ] ')'
+				'{', { decl, ';' }, { expr, ';' }, '}'
+			;
+
+decl		=	'var', NAME, { ',', NAME }
+			;
+
+expr		=	'return', expr
+			|	NAME, '=', expr
+			|	binopexpr
+			;
+
+binopexpr	=	smallexpr, { OPNAME, smallexpr }
+			;
+
+smallexpr	=	NAME
+			|	NAME, '(', [ expr, { ',', expr } ], ')'
+			|	OPNAME, smallexpr
+			| 	LITERAL 
+			|	'(', expr, ')'
+			|	'if', expr, body, { 'elsif', expr, body }, [ 'else', body ]
+			|	'while', expr, body
+			;
+
+body		=	'{', { expr, ';' }, '}'
+			;

@@ -1,6 +1,3 @@
-// Þýðandi fyrir ofureinfalt NanoLisp forritunarmál.
-// Höfundur: Snorri Agnarsson, 2014-2016.
-
 import java.io.Reader;
 import java.io.FileReader;
 import java.io.InputStreamReader;
@@ -47,26 +44,22 @@ public class NanoParser
 	// 0 inniheldur nafn fallsins sem verið er að skilgreina.
     String[] vars;
 
-	// Notkun: NanoLisp n = new NanoLisp(l);
-	// Fyrir:  l er lesgreinir.
-	// Eftir:  n vísar á nýjan NanoLisp þýðanda sem þýðir inntakið
-	//         sem l hefur.
     public NanoParser( NanoLexer lexer )
     {
         lex = lexer;
     }
 
-    void program()
+    Object[] program()
     {
         Vector<Object> res = new Vector<Object>();
         while( lex.getToken() == NanoLexer.NAME ) res.add(function());
-        //return res.toArray();
+        return res.toArray();
     }
 
     Object[] function()
     {
         Vector<String> args = new Vector<String>();
-        args.add(lex.over(NanoLexer.NAME));
+        String name = lex.over(NanoLexer.NAME);
         lex.over(NanoParser.SVIGIOPNAST);
         if( lex.getToken() != NanoParser.SVIGILOKAST ) {
             args.add(lex.over(NanoLexer.NAME));
@@ -83,7 +76,7 @@ public class NanoParser
         Object[] decls = declList();
         Object[] exprs = exprList();
 
-        Object[] res = new Object[]{vars[0],vars.length-1,decls,exprs}; // decl fjöldi ásamt declPos falli?
+        Object[] res = new Object[]{name,vars.length-1,decls,exprs}; // decl fjöldi ásamt declPos falli?
         vars = null;
         lex.over(NanoParser.CURLYLOKAST);
         return res;

@@ -1,0 +1,24 @@
+Test(a, b, c) {
+    ;;; Þetta er komment
+    var i;
+    var j, k;
+
+    i = a;
+    j = b + c;
+    if (a > b) {
+        k = a + b + c;
+    } elseif a < b {
+        k = -a;
+    } else {
+        k = 5;
+    };
+    while k < j {
+        k = k + 1;
+    };
+    test2(a, b, c);
+    return i + j;
+}
+
+Test2() {
+    return 5;
+}

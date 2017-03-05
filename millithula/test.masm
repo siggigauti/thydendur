@@ -1,0 +1,96 @@
+"test.mexe" = main in
+!
+{{
+#"fibo[f1]" =
+[
+(MakeVal null)
+(Push)
+(Push)
+(Push)
+(Push)
+(MakeVal 1)
+(Store 2)
+(MakeVal 1)
+(Store 3)
+(MakeVal 0)
+(Store 1)
+_0:
+(Fetch 1)
+(Push)
+(Fetch 0)
+(Call #"!=[f2]" 2)
+(GoFalse _1)
+(Fetch 2)
+(Push)
+(Fetch 3)
+(Call #"+[f2]" 2)
+(Store 4)
+(Fetch 3)
+(Store 2)
+(Fetch 4)
+(Store 3)
+(Fetch 1)
+(Push)
+(MakeVal 1)
+(Call #"+[f2]" 2)
+(Store 1)
+(Go _0)
+_1:
+(Fetch 2)
+(Return)
+];
+#"f[f1]" =
+[
+(Fetch 0)
+(Push)
+(MakeVal 2)
+(Call #"<[f2]" 2)
+(GoFalse _2)
+(MakeVal 1)
+(Go _3)
+_2:
+(Fetch 0)
+(Push)
+(MakeVal 1)
+(Call #"-[f2]" 2)
+(Call #"f[f1]" 1)
+(Push)
+(Fetch 0)
+(Push)
+(MakeVal 2)
+(Call #"-[f2]" 2)
+(Call #"f[f1]" 1)
+(Call #"+[f2]" 2)
+_3:
+(Return)
+];
+#"main[f0]" =
+[
+(MakeVal 1)
+(Push)
+(MakeVal 2)
+(Call #":[f2]" 2)
+(Push)
+(MakeVal 3)
+(Call #":[f2]" 2)
+(Push)
+(MakeVal null)
+(Call #":[f2]" 2)
+(Call #"writeln[f1]" 1)
+(MakeVal "fibo(35)=")
+(Push)
+(MakeVal 35)
+(Call #"fibo[f1]" 1)
+(Call #"++[f2]" 2)
+(Call #"writeln[f1]" 1)
+(MakeVal "fibo(35)=")
+(Push)
+(MakeVal 35)
+(Call #"f[f1]" 1)
+(Call #"++[f2]" 2)
+(Call #"writeln[f1]" 1)
+(Return)
+];
+}}
+*
+BASIS;

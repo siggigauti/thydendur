@@ -151,7 +151,7 @@ public class NanoParser
                 return new Object[]{"CALL", name, args};
             }
         case NanoLexer.OPNAME:
-            return new Object[]{"CALL", lex.over(NanoLexer.OPNAME), smallexpr()};
+            return new Object[]{"CALL", lex.over(NanoLexer.OPNAME), new Object[]{smallexpr()}};
         case NanoLexer.LITERAL:
             return new Object[]{"LITERAL", lex.over(NanoLexer.LITERAL)};
         case NanoLexer.SVIGIOPNAST:
@@ -213,25 +213,107 @@ public class NanoParser
 
     static void generateFunction( Object[] fun )
     {
+        // fun = {fname, argcount, varcount, expr}
         System.out.println("#\"" + (String)fun[0] + "[f" + (int)fun[1] + "]\" =");
-        System.out.println("  [");
+        System.out.println("[");
+
+        if((int)fun[2] > 0) {
+            System.out.println("(MakeVal null)");
+            for(int i = 0; i < (int)fun[2]; i++) {
+                System.out.println("(Push)");
+            }
+        }
+
         Object[] ex = (Object[]) fun[3];
         for(int i = 0; i < ex.length; i++) {
             generateExpr((Object[])ex[i]);
         }
-        System.out.println("  ];");
+        System.out.println("(Return)");
+        System.out.println("];");
     }
 
-    //static int nextLab = 0; // ???
+    static int nextLab = 0;
 
     static void generateExpr( Object[] e )
     {
-        System.out.println("  " + (String)e[0]);
+        switch((String)e[0]) {
+            case "ASSIGN":
+                // e = {"ASSIGN", loc, expr}
+                generateExpr((Object[])e[2]);
+                System.out.println("(Store " + e[1] + ")");
+                return;
+            case "LITERAL":
+                // e = {"LITERAL", lit}
+                System.out.println("(MakeVal " + e[1] + ")");
+                return;
+            case "WHILE":
+                // e = {"WHILE", cond, body}
+                String startWhile = "_" + nextLab++;
+                String endWhile = "_" + nextLab++;
+                System.out.println(startWhile + ":");
+                generateExpr((Object[])e[1]);
+                System.out.println("(GoFalse " + endWhile + ")");
+                generateBody((Object[])e[2]);
+                System.out.println("(Go " + startWhile + ")");
+                System.out.println(endWhile + ":");
+                return;
+            case "CALL":
+                // e = {"CALL", opname, args}
+                Object[] args = (Object[])e[2];
+                if(args.length > 0) {
+                    generateExpr((Object[])args[0]);
+                }
+                for(int i = 1; i < args.length; i++) {
+                    System.out.println("(Push)");
+                    generateExpr((Object[])args[i]);
+                }
+                System.out.println("(Call #\"" + (String)e[1] + "[f" + args.length + "]\" " + args.length + ")");
+                return;
+            case "NAME":
+                // e = {"NAME", loc}
+                System.out.println("(Fetch " + (int)e[1] + ")");
+                return;
+            case "IF":
+                // e = {"IF", (cond, body), [body]}
+                String nextIf = "_" + nextLab++;
+                String endIf = "_" + nextLab++;
+                generateExpr((Object[])e[1]);
+                System.out.println("(GoFalse " + nextIf + ")");
+                generateBody((Object[])e[2]);
+                System.out.println("(Go " + endIf + ")");
+                System.out.println(nextIf + ":");
+                // Else if
+                for(int i = 4; i < e.length; i+=2) {
+                    nextIf = "_" + nextLab++;
+                    generateExpr((Object[])e[i-1]);
+                    System.out.println("(GoFalse " + nextIf + ")");
+                    generateBody((Object[])e[i]);
+                    System.out.println("(Go " + endIf + ")");
+                    System.out.println(nextIf + ":");
+                }
+                // Else
+                if(e.length%2 == 0) {
+                    generateBody((Object[])e[e.length-1]);
+                }
+                System.out.println(endIf + ":");
+                return;
+            case "RETURN":
+                // e = {"RETURN", expr}
+                generateExpr((Object[])e[1]);
+                System.out.println("(Return)");
+                return;
+            default:
+                System.out.println("ERROR");
+                return;
+        }
+
     }
 
     static void generateBody( Object[] bod )
     {
-
+        for(int i = 0; i < bod.length; i++) {
+            generateExpr((Object[])bod[i]);
+        }
     }
 
     public static void main( String[] args )
@@ -242,7 +324,7 @@ public class NanoParser
       String name = args[0].substring(0,args[0].lastIndexOf('.'));
       NanoParser parser = new NanoParser(lexer);
       Object[] code = parser.program();
-      generateProgram(args[0], code);
       if( lexer.getToken()!=0 ) throw new Error("Expected EOF, found "+lexer.getLexeme());
+      generateProgram(args[0], code);
   }
 }
